@@ -5,12 +5,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class AuthenticationRepository {
+  final SharedPreferences _sharedPref;
+
+  AuthenticationRepository(this._sharedPref);
+
   Future<bool> createUserWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
     try {
-      SharedPreferences _sharedPref = await SharedPreferences.getInstance();
+      // SharedPreferences _sharedPref = await SharedPreferences.getInstance();
       List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
       print('--- Debugging ---');
       print('');
@@ -47,7 +51,7 @@ class AuthenticationRepository {
     required String password,
   }) async {
     try {
-      SharedPreferences _sharedPref = await SharedPreferences.getInstance();
+      // SharedPreferences _sharedPref = await SharedPreferences.getInstance();
 
       List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
       List<Map<String, String>> _usersDecoded =
