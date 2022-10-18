@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart';
 class AuthenticationRepository {
   final Future<SharedPreferences> sharedPreferences;
 
-  AuthenticationRepository(this.sharedPreferences);
+  AuthenticationRepository({required this.sharedPreferences});
 
   Future<bool> createUserWithEmailAndPassword({
     required String email,
