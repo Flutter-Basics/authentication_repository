@@ -54,8 +54,8 @@ class AuthenticationRepository {
       // SharedPreferences _sharedPref = await SharedPreferences.getInstance();
       SharedPreferences _sharedPref = await sharedPreferences;
       List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
-      List<Map<String, String>> _usersDecoded =
-          _users.map((e) => jsonDecode(e) as Map<String, String>).toList();
+      List<Map<String, dynamic>> _usersDecoded =
+          _users.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
 
       print('--- Debugging ---');
       print(_users);
@@ -67,7 +67,7 @@ class AuthenticationRepository {
       print(' --- ');
       print('');
 
-      Map<String, String> _user =
+      Map<String, dynamic> _user =
           _usersDecoded.firstWhere((element) => element['email'] == email);
 
       print(_user);
