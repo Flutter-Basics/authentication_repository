@@ -9,79 +9,94 @@ class AuthenticationRepository {
 
   AuthenticationRepository({required this.sharedPreferences});
 
-  Future<bool> createUserWithEmailAndPassword({
+  Future<AuthResponse> createUserWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
     try {
       SharedPreferences _sharedPref = await sharedPreferences;
       List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
-      print('--- Debugging ---');
-      print('');
-      print(_users);
-      print('');
-      print(' --- ');
-      print('');
 
       Map<String, String> _user = {
         'id': const Uuid().v4(),
         'email': email,
         'password': password
       };
-      print(_user);
-      print('');
-      print(' --- ');
-      print('');
-      print(jsonEncode(_user));
-      print('');
-      print(' --- End --- ');
 
       _sharedPref.setStringList('users', [..._users, jsonEncode(_user)]);
 
       await Future.delayed(const Duration(seconds: 5));
-      return true;
+      return AuthResponse(isAuthenticated: true, logs: {
+        '_users': _users,
+        '_user': _user,
+        '_userEncoded': jsonEncode(_user)
+      });
     } catch (e) {
       log(e.toString());
-      return false;
+      return AuthResponse(isAuthenticated: false, logs: {'error': e});
     }
   }
 
-  Future<bool> signInWithEmailAndPassword({
+  Future<AuthResponse> signInWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
-    try {
-      // SharedPreferences _sharedPref = await SharedPreferences.getInstance();
-      SharedPreferences _sharedPref = await sharedPreferences;
-      List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
-      List<Map<String, dynamic>> _usersDecoded =
-          _users.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
+    // try {
+    //   SharedPreferences _sharedPref = await sharedPreferences;
+    //   List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
+    //   List<Map<String, dynamic>> _usersDecoded =
+    //       _users.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
 
-      print('--- Debugging ---');
-      print(_users);
-      print('');
-      print(' --- ');
-      print('');
-      print(_usersDecoded);
-      print('');
-      print(' --- ');
-      print('');
+    //   Map<String, dynamic>? _user =
+    //       _usersDecoded.firstWhere((element) => element['email'] == email);
 
-      Map<String, dynamic> _user =
-          _usersDecoded.firstWhere((element) => element['email'] == email);
+    //   if (_user.isNotEmpty) {
+    //     await Future.delayed(const Duration(seconds: 5));
+    //     return AuthResponse(isAuthenticated: true, logs: {
+    //       '_users': _users,
+    //       '_usersDecoded': _usersDecoded,
+    //       '_user': _user
+    //     });
+    //   }
+    //   return AuthResponse(isAuthenticated: false, logs: {
+    //     'message': 'User not found!',
+    //     '_users': _users,
+    //     '_usersDecoded': _usersDecoded,
+    //     '_user': _user
+    //   });
+    // } catch (e) {
+    //   // log(e.toString());
+    //   return AuthResponse(isAuthenticated: false, logs: {'error': e});
+    // }
 
-      print(_user);
-      print('');
-      print(' --- End --- ');
+    SharedPreferences _sharedPref = await sharedPreferences;
+    List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
+    List<Map<String, dynamic>> _usersDecoded =
+        _users.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
 
-      if (_user.isNotEmpty) {
-        await Future.delayed(const Duration(seconds: 5));
-        return true;
-      }
-      return false;
-    } catch (e) {
-      log(e.toString());
-      return false;
+    Map<String, dynamic>? _user = _usersDecoded
+        .singleWhere((element) => element['email'] == email, orElse: () => {});
+
+    if (_user.isNotEmpty) {
+      await Future.delayed(const Duration(seconds: 5));
+      return AuthResponse(isAuthenticated: true, logs: {
+        '_users': _users,
+        '_usersDecoded': _usersDecoded,
+        '_user': _user
+      });
     }
+    return AuthResponse(isAuthenticated: false, logs: {
+      'message': 'User not found!',
+      '_users': _users,
+      '_usersDecoded': _usersDecoded,
+      '_user': _user
+    });
   }
+}
+
+class AuthResponse {
+  final bool isAuthenticated;
+  final Map<String, dynamic>? logs;
+
+  AuthResponse({required this.isAuthenticated, this.logs});
 }
