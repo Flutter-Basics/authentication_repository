@@ -41,34 +41,6 @@ class AuthenticationRepository {
     required String email,
     required String password,
   }) async {
-    // try {
-    //   SharedPreferences _sharedPref = await sharedPreferences;
-    //   List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
-    //   List<Map<String, dynamic>> _usersDecoded =
-    //       _users.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
-
-    //   Map<String, dynamic>? _user =
-    //       _usersDecoded.firstWhere((element) => element['email'] == email);
-
-    //   if (_user.isNotEmpty) {
-    //     await Future.delayed(const Duration(seconds: 5));
-    //     return AuthResponse(isAuthenticated: true, logs: {
-    //       '_users': _users,
-    //       '_usersDecoded': _usersDecoded,
-    //       '_user': _user
-    //     });
-    //   }
-    //   return AuthResponse(isAuthenticated: false, logs: {
-    //     'message': 'User not found!',
-    //     '_users': _users,
-    //     '_usersDecoded': _usersDecoded,
-    //     '_user': _user
-    //   });
-    // } catch (e) {
-    //   // log(e.toString());
-    //   return AuthResponse(isAuthenticated: false, logs: {'error': e});
-    // }
-
     SharedPreferences _sharedPref = await sharedPreferences;
     List<String> _users = _sharedPref.getStringList('users') ?? <String>[];
     List<Map<String, dynamic>> _usersDecoded =
