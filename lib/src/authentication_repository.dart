@@ -15,9 +15,19 @@ class AuthenticationRepository {
       {this.amplify});
   AuthenticationRepository.amplify(this.amplify, {this.sharedPreferences});
 
+  Future<AuthResponse> initializeAuthentication() async {
+    if (amplify != null) {
+      AuthSession _session = await amplify!.Auth.fetchAuthSession();
+      return AuthResponse(isAuthenticated: _session.isSignedIn);
+    }
+    return AuthResponse(isAuthenticated: false, error: 'Something went wrong');
+  }
+
   Future<AuthResponse> createUserWithEmailAndPassword({
+    required String username,
     required String email,
     required String password,
+    required String name,
   }) async {
     SharedPreferences? _sharedPref = await sharedPreferences;
     if (sharedPreferences != null) {
@@ -47,13 +57,14 @@ class AuthenticationRepository {
     } else if (amplify != null) {
       try {
         SignUpResult _result = await amplify!.Auth.signUp(
-            username: email,
+            username: username,
             password: password,
             options: CognitoSignUpOptions(
                 userAttributes: <CognitoUserAttributeKey, String>{
-                  CognitoUserAttributeKey.email: email
+                  CognitoUserAttributeKey.email: email,
+                  CognitoUserAttributeKey.name: name,
                 }));
-        _result.nextStep;
+        // _result.nextStep;
         return AuthResponse(
             isAuthenticated: _result.isSignUpComplete,
             nextStep: true,
@@ -61,6 +72,12 @@ class AuthenticationRepository {
               'isAuthenticated': _result.isSignUpComplete,
               'results': _result.nextStep
             });
+      } on UsernameExistsException catch (e) {
+        return AuthResponse(
+          isAuthenticated: false,
+          error: 'Username is taken',
+          logs: {'message': e.toString()},
+        );
       } catch (e) {
         log(e.toString());
         return AuthResponse(
@@ -69,6 +86,79 @@ class AuthenticationRepository {
     } else {
       return AuthResponse(
           isAuthenticated: false, logs: {'error': 'Something went wrong!'});
+    }
+  }
+
+  Future<AuthResponse> resendConfirmationCode(String username) async {
+    try {
+      ResendSignUpCodeResult _result =
+          await amplify!.Auth.resendSignUpCode(username: username);
+      return AuthResponse(
+          isAuthenticated: false,
+          nextStep: true,
+          logs: {'codeDeleuveryDetails': _result.codeDeliveryDetails});
+    } catch (e) {
+      return AuthResponse(
+          isAuthenticated: false,
+          nextStep: false,
+          error: 'Unable to send the confirmation code.',
+          logs: {'message': e.toString()});
+    }
+  }
+
+  Future<AuthResponse> forgotPassword(String username) async {
+    if (amplify != null) {
+      try {
+        ResetPasswordResult _result =
+            await amplify!.Auth.resetPassword(username: username);
+        return AuthResponse(
+            isAuthenticated: false, isPasswordReset: _result.isPasswordReset);
+        // return _result.isPasswordReset
+        //     ? AuthResponse(
+        //         isAuthenticated: false,
+        //         isPasswordReset: true,
+        //         error: 'Password has been successfully reset.',
+        //         logs: {'result': _result.toString()})
+        //     : AuthResponse(
+        //         isAuthenticated: false,
+        //         error: 'Password has been reset.',
+        //         logs: {'result': _result.toString()});
+      } on InvalidParameterException catch (e) {
+        return AuthResponse(
+          isAuthenticated: false,
+          error: 'Make sure your username is valid',
+          logs: {'message': e.toString()},
+        );
+      } catch (e) {
+        return AuthResponse(
+            isAuthenticated: false,
+            error: 'Some error',
+            logs: {'message': e.toString()});
+      }
+    }
+    return AuthResponse(isAuthenticated: false, error: 'Something went wrong');
+  }
+
+  Future<AuthResponse> resetPasswordVerification({
+    required String username,
+    required String password,
+    required String verificationCode,
+  }) async {
+    try {
+      await amplify!.Auth.confirmResetPassword(
+          username: username,
+          newPassword: password,
+          confirmationCode: verificationCode);
+      return AuthResponse(
+        isAuthenticated: false,
+        isPasswordReset: true,
+        error: 'Password has been successfully reset.',
+      );
+    } catch (e) {
+      return AuthResponse(
+          isAuthenticated: false,
+          error: 'Some error',
+          logs: {'message': e.toString()});
     }
   }
 
@@ -89,9 +179,27 @@ class AuthenticationRepository {
     }
   }
 
+  Future<AuthDebugger> clearUsersData() async {
+    if (sharedPreferences != null) {
+      SharedPreferences _sharedPrefs = await SharedPreferences.getInstance();
+      _sharedPrefs.clear();
+      return AuthDebugger(response: true, message: 'User data deleted');
+    } else if (amplify != null) {
+      try {
+        await amplify!.Auth.deleteUser();
+        return AuthDebugger(response: true, message: 'User data deleted');
+      } catch (e) {
+        return AuthDebugger(response: false, error: e.toString());
+      }
+    } else {
+      return AuthDebugger(response: false, error: 'Something went wrong');
+    }
+  }
+
   Future<AuthResponse> signInWithEmailAndPassword({
-    required String email,
+    // required String email,
     required String password,
+    required String username,
   }) async {
     SharedPreferences? _sharedPref = await sharedPreferences;
     if (_sharedPref != null) {
@@ -101,7 +209,7 @@ class AuthenticationRepository {
             _users.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
 
         Map<String, dynamic>? _user = _usersDecoded.singleWhere(
-            (element) => element['email'] == email,
+            (element) => element['username'] == username,
             orElse: () => {});
 
         if (_user.isNotEmpty) {
@@ -127,18 +235,45 @@ class AuthenticationRepository {
     } else if (amplify != null) {
       try {
         SignInResult _result =
-            await amplify!.Auth.signIn(username: email, password: password);
+            await amplify!.Auth.signIn(username: username, password: password);
+        // _result.nextStep;
         return AuthResponse(
             isAuthenticated: _result.isSignedIn,
             logs: {'result': _result.toString()});
+      } on UserNotConfirmedException catch (e) {
+        AuthResponse _response = await resendConfirmationCode(username);
+        return AuthResponse(
+          isAuthenticated: false,
+          nextStep: true,
+          error: 'User not confirmed',
+          logs: {
+            'message': e.toString(),
+            'codeDeliveryDetails': _response.logs?['codeDeleuveryDetails'],
+          },
+        );
+      } on UserNotFoundException catch (e) {
+        return AuthResponse(
+          isAuthenticated: false,
+          error: 'User not found',
+          logs: {'message': e.toString()},
+        );
       } catch (e) {
         log(e.toString());
         return AuthResponse(
-            isAuthenticated: false, logs: {'error': 'Amplify error'});
+          isAuthenticated: false,
+          error: 'Caught an error',
+          logs: {'message': e.toString()},
+        );
       }
     } else {
       return AuthResponse(
           isAuthenticated: false, logs: {'error': 'Something went wrong'});
+    }
+  }
+
+  Future<void> signOut() async {
+    if (amplify != null) {
+      await amplify!.Auth.signOut();
     }
   }
 }
@@ -146,8 +281,27 @@ class AuthenticationRepository {
 class AuthResponse {
   final bool isAuthenticated;
   final bool nextStep;
+  final bool? isPasswordReset;
+  final String? error;
   final Map<String, dynamic>? logs;
 
-  AuthResponse(
-      {required this.isAuthenticated, this.nextStep = false, this.logs});
+  AuthResponse({
+    required this.isAuthenticated,
+    this.nextStep = false,
+    this.isPasswordReset = false,
+    this.error,
+    this.logs,
+  });
+}
+
+class AuthDebugger {
+  final bool? response;
+  final String? message;
+  final String? error;
+
+  AuthDebugger({
+    this.response,
+    this.message,
+    this.error,
+  });
 }
