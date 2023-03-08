@@ -113,16 +113,6 @@ class AuthenticationRepository {
             await amplify!.Auth.resetPassword(username: username);
         return AuthResponse(
             isAuthenticated: false, isPasswordReset: _result.isPasswordReset);
-        // return _result.isPasswordReset
-        //     ? AuthResponse(
-        //         isAuthenticated: false,
-        //         isPasswordReset: true,
-        //         error: 'Password has been successfully reset.',
-        //         logs: {'result': _result.toString()})
-        //     : AuthResponse(
-        //         isAuthenticated: false,
-        //         error: 'Password has been reset.',
-        //         logs: {'result': _result.toString()});
       } on InvalidParameterException catch (e) {
         return AuthResponse(
           isAuthenticated: false,
